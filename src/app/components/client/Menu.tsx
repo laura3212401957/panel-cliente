@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { ShoppingCart, Search, ArrowLeft, X } from "lucide-react";
-import { projectId, publicAnonKey } from "../../../../utils/supabase/info";
+import { projectId, publicAnonKey } from "../../../../utils/supabase/info"; // still tried first, falls back to local data
 
 interface Product {
   id: string;
@@ -24,9 +24,49 @@ interface MenuProps {
   onProductClick: (product: Product) => void;
 }
 
+const DEFAULT_MENU: Category[] = [
+  {
+    id: "platos-principales",
+    name: "Platos Principales",
+    products: [
+      { id: "plato-1", name: "Carne Sudada", price: 16000, description: "Carne en salsa criolla con arroz", image: "https://caldoparado.wordpress.com/wp-content/uploads/2023/10/whatsapp-image-2023-10-20-at-6.02.43-pm.jpeg?w=768" },
+      { id: "plato-2", name: "Pollo Sudado", price: 15000, description: "Pollo en salsa criolla", image: "https://caldoparado.wordpress.com/wp-content/uploads/2023/10/pollo-asado.jpg?w=640" },
+      { id: "plato-3", name: "Pollo a la Brasa", price: 16000, description: "Pollo a la brasa jugoso", image: "https://caldoparado.wordpress.com/wp-content/uploads/2023/10/muslo-de-pollo.jpg?w=612" },
+      { id: "plato-4", name: "Chorizo Santarosano", price: 14000, description: "Chorizo artesanal con arepa", image: "https://caldoparado.wordpress.com/wp-content/uploads/2023/10/chorizo.webp?w=417" },
+      { id: "plato-5", name: "Pincho", price: 12000, description: "Brocheta de carne con arepa", image: "https://caldoparado.wordpress.com/wp-content/uploads/2023/10/whatsapp-image-2023-10-20-at-6.02.40-pm-1.jpeg?w=768" },
+    ]
+  },
+  {
+    id: "moñonas",
+    name: "Moñonas",
+    products: [
+      { id: "moñona-1", name: "Moñona", price: 13000, description: "Plato tradicional paisa", image: "https://caldoparado.wordpress.com/wp-content/uploads/2023/10/whatsapp-image-2023-10-20-at-6.02.41-pm.jpeg?w=768" },
+    ]
+  },
+  {
+    id: "sopas-caldos",
+    name: "Sopas y Caldos",
+    products: [
+      { id: "sopa-1", name: "Sopa de Mondongo", price: 14000, description: "Sopa tradicional de mondongo", image: "https://caldoparado.wordpress.com/wp-content/uploads/2023/10/mondongo.jpg?w=426" },
+      { id: "sopa-2", name: "Caldo con Costilla", price: 15000, description: "Caldo paisa con costilla", image: "https://caldoparado.wordpress.com/wp-content/uploads/2023/10/whatsapp-image-2023-10-05-at-6.22.19-pm.jpeg?w=768" },
+      { id: "sopa-3", name: "Caldo de Pollo", price: 13000, description: "Caldo de pollo tradicional", image: "https://caldoparado.wordpress.com/wp-content/uploads/2023/10/caldo-de-pollo.webp?w=626" },
+    ]
+  },
+  {
+    id: "bebidas",
+    name: "Bebidas",
+    products: [
+      { id: "bebida-1", name: "Tinto", price: 2000, description: "Café colombiano", image: "https://caldoparado.wordpress.com/wp-content/uploads/2023/10/tinto-1.webp?w=600" },
+      { id: "bebida-2", name: "Jugo Natural", price: 5000, description: "Variedad de frutas frescas", image: "https://images.unsplash.com/photo-1600271886742-f049cd451bba?w=400&h=300&fit=crop" },
+      { id: "bebida-3", name: "Gaseosa", price: 3000, description: "Bebida carbonatada 350ml", image: "https://images.unsplash.com/photo-1629203851122-3726ecdf080e?w=400&h=300&fit=crop" },
+      { id: "bebida-4", name: "Agua", price: 2000, description: "Agua embotellada", image: "https://images.unsplash.com/photo-1548839140-29a749e1cf4d?w=400&h=300&fit=crop" },
+    ]
+  }
+];
+
 export function Menu({ tableNumber, cart, onAddToCart, onViewCart, onProductClick }: MenuProps) {
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [categories, setCategories] = useState<Category[]>(DEFAULT_MENU);
+  const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<string>("todos");
   const [filtersVisible, setFiltersVisible] = useState(true);
@@ -52,18 +92,16 @@ export function Menu({ tableNumber, cart, onAddToCart, onViewCart, onProductClic
         setCategories(data.categories);
       }
     } catch (error) {
-      console.log("Error fetching menu:", error);
-    } finally {
-      setLoading(false);
+      console.log("Error fetching menu, usando datos locales:", error);
     }
   };
 
   const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
-  // Filtros basados en categorías reales
   const dishTypes = [
     { id: "todos", name: "Todos" },
     { id: "platos-principales", name: "Platos Principales" },
+    { id: "moñonas", name: "Moñonas" },
     { id: "sopas-caldos", name: "Sopas y Caldos" },
     { id: "bebidas", name: "Bebidas" }
   ];

@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { ArrowLeft, Minus, Plus, Trash2 } from "lucide-react";
-import { projectId, publicAnonKey } from "../../../../utils/supabase/info";
 
 interface Product {
   id: string;
@@ -44,24 +43,17 @@ export function OrderEdit({ orderId, onBack, onSaved }: OrderEditProps) {
     fetchOrder();
   }, [orderId]);
 
-  const fetchOrder = async () => {
+  const fetchOrder = () => {
     try {
-      const tableNumber = orderId.split(":")[2];
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-80493524/orders/${tableNumber}`,
-        {
-          headers: { Authorization: `Bearer ${publicAnonKey}` },
-        }
-      );
-      const orders = await response.json();
-      const currentOrder = orders.find((o: Order) => o.id === orderId);
-      if (currentOrder) {
-        setOrder(currentOrder);
-        setItems(currentOrder.items);
-        setNotes(currentOrder.notes);
+      const all = JSON.parse(localStorage.getItem("orders") || "{}");
+      const found = all[orderId] as Order | undefined;
+      if (found) {
+        setOrder(found);
+        setItems(found.items);
+        setNotes(found.notes);
       }
     } catch (error) {
-      console.log("Error fetching order:", error);
+      console.log("Error loading order:", error);
     } finally {
       setLoading(false);
     }
@@ -80,7 +72,7 @@ export function OrderEdit({ orderId, onBack, onSaved }: OrderEditProps) {
     setItems(items.filter(item => item.product.id !== productId));
   };
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (items.length === 0) {
       alert("Debes tener al menos un producto");
       return;
@@ -88,25 +80,20 @@ export function OrderEdit({ orderId, onBack, onSaved }: OrderEditProps) {
 
     setSaving(true);
     try {
-      const total = items.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-80493524/orders/${orderId}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${publicAnonKey}`,
-          },
-          body: JSON.stringify({ items, notes, total }),
-        }
-      );
+      const all = JSON.parse(localStorage.getItem("orders") || "{}");
+      const existing = all[orderId];
+      if (!existing) { alert("Pedido no encontrado"); return; }
 
-      if (response.ok) {
-        onSaved();
-      } else {
-        const error = await response.json();
-        alert(error.error || "No se pudo actualizar");
+      const now = new Date();
+      if (now > new Date(existing.editableUntil) || existing.status !== "received") {
+        alert("El pedido ya no se puede modificar");
+        return;
       }
+
+      const total = items.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+      all[orderId] = { ...existing, items, notes, total, updatedAt: new Date().toISOString() };
+      localStorage.setItem("orders", JSON.stringify(all));
+      onSaved();
     } catch (error) {
       console.log("Error saving order:", error);
       alert("Error al guardar");

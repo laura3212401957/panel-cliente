@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { Clock, ChefHat, Package, CheckCircle, Edit2, ArrowLeft } from "lucide-react";
-import { projectId, publicAnonKey } from "../../../../utils/supabase/info";
 
 interface Product {
   id: string;
@@ -48,8 +47,8 @@ export function OrderStatus({ orderId, onEdit, onNewOrder }: OrderStatusProps) {
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
 
   useEffect(() => {
-    fetchOrder();
-    const interval = setInterval(fetchOrder, 2000);
+    loadOrder();
+    const interval = setInterval(loadOrder, 2000);
     return () => clearInterval(interval);
   }, [orderId]);
 
@@ -68,21 +67,22 @@ export function OrderStatus({ orderId, onEdit, onNewOrder }: OrderStatusProps) {
     return () => clearInterval(interval);
   }, [order]);
 
-  const fetchOrder = async () => {
+  const loadOrder = () => {
     try {
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-80493524/orders/${order?.tableNumber || "1"}`,
-        {
-          headers: { Authorization: `Bearer ${publicAnonKey}` },
+      const all = JSON.parse(localStorage.getItem("orders") || "{}");
+      const found = all[orderId] as Order | undefined;
+      if (found) {
+        const now = new Date().getTime();
+        const until = new Date(found.editableUntil).getTime();
+        if (found.editable && now > until) {
+          found.editable = false;
+          all[orderId] = found;
+          localStorage.setItem("orders", JSON.stringify(all));
         }
-      );
-      const orders = await response.json();
-      const currentOrder = orders.find((o: Order) => o.id === orderId);
-      if (currentOrder) {
-        setOrder(currentOrder);
+        setOrder(found);
       }
     } catch (error) {
-      console.log("Error fetching order:", error);
+      console.log("Error loading order:", error);
     } finally {
       setLoading(false);
     }

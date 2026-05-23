@@ -6,7 +6,6 @@ import { Cart } from "./components/client/Cart";
 import { PaymentMethod } from "./components/client/PaymentMethod";
 import { OrderStatus } from "./components/client/OrderStatus";
 import { OrderEdit } from "./components/client/OrderEdit";
-import { projectId, publicAnonKey } from "../../utils/supabase/info";
 
 interface Product {
   id: string;
@@ -81,36 +80,31 @@ function ClientApp({ tableNumber }: { tableNumber: string }) {
     setCart(prev => prev.filter(item => item.product.id !== productId));
   };
 
-  const handleConfirmOrder = async (paymentMethod: string) => {
-    try {
-      const total = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-80493524/orders`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${publicAnonKey}`,
-          },
-          body: JSON.stringify({
-            tableNumber,
-            items: cart,
-            paymentMethod,
-            notes,
-            total,
-          }),
-        }
-      );
+  const handleConfirmOrder = (paymentMethod: string) => {
+    const total = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+    const orderId = `order:table:${tableNumber}:${Date.now()}`;
+    const order = {
+      id: orderId,
+      tableNumber,
+      items: cart,
+      paymentMethod,
+      notes: notes || "",
+      total,
+      status: "received",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      editable: true,
+      editableUntil: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+    };
 
-      const order = await response.json();
-      setCurrentOrderId(order.id);
-      setCart([]);
-      setNotes("");
-      setView("status");
-    } catch (error) {
-      console.log("Error creating order:", error);
-      alert("Error al crear el pedido");
-    }
+    const existing = JSON.parse(localStorage.getItem("orders") || "{}");
+    existing[orderId] = order;
+    localStorage.setItem("orders", JSON.stringify(existing));
+
+    setCurrentOrderId(orderId);
+    setCart([]);
+    setNotes("");
+    setView("status");
   };
 
   const handleNewOrder = () => {
@@ -270,7 +264,7 @@ function Home({ onNavigate }: { onNavigate: () => void }) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2, ease: "easeOut" }}
           >
-            A Caldo Parado El Paisa
+            Caldo Parado El Paisa
           </motion.p>
         </div>
 
